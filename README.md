@@ -1,2 +1,2 @@
-# eucd_ccm_mustache
+# eucd_ccm
 Created with CodeSandbox
