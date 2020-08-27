@@ -1,5 +1,3 @@
-console.clear();
-
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// to do ////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -8,6 +6,7 @@ console.clear();
 // details = full details and variable descriptions
 // add legend: https://data-map-d3.readthedocs.io/en/latest/steps/step_14.html#legend
 // voronoi hover
+// bouncy force
 // transitions: https://github.com/veltman/flubber
 // steps
 // ripoff: https://www.bloomberg.com/graphics/2015-auto-sales/
@@ -23,10 +22,10 @@ import {
 	select,
 	extent,
 	scaleLinear,
-	scaleBand,
+	// scaleBand,
 	scaleOrdinal,
 	// timeFormat,
-	axisLeft,
+	// axisLeft,
 	axisBottom,
 	format,
 	forceSimulation,
@@ -34,17 +33,24 @@ import {
 	forceY,
 	forceCollide,
 	nest,
+	range,
+	map,
 	mouse
 } from "d3";
 
 // import fetch as d3-fetch from "d3-fetch";
 import { csv } from "d3-fetch";
 
+// import _ from "lodash";
+import { split, forEach, chain, sortBy } from "lodash";
+
+// import mustache
+// import { Mustache } from "mustache";
+const Mustache = require("mustache");
+// const map = require("d3");
+
 // import d3-legend as d3-legend from "d3-legend";
 // import { legendColor } from "d3-legend";
-
-// import _ from "lodash";
-import { split, forEach, chain, trim, pick, sortBy } from "lodash";
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// globals //////////////////////////////////////
@@ -59,34 +65,11 @@ const colorsCat = [
 	"#fed061"
 ];
 
-const colorsSeq = [
-	"#113655",
-	"#245b78",
-	"#3f8ca5",
-	"#68c4d8",
-	"#99d4e3",
-	"#c0e3ed",
-	"#e1f1f7",
-	"#fed061",
-	"#fab85f",
-	"#f28c00"
-];
-
-const dropdownValues = [
-	"attacker_jurisdiction",
-	"target_jurisdiction",
-	"us_me",
-	"command",
-	"military"
-];
-
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// dropdown //////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
 var currentKey = "";
-
-// window.onresize = updateLegend;
 
 select("#dropdown").on("change", function (a) {
 	// Change the current key and call the function to update the colors.
@@ -94,7 +77,7 @@ select("#dropdown").on("change", function (a) {
 	dotsUpdate();
 });
 
-var data;
+window.onresize = legendUpdate;
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// svg //////////////////////////////////////////
@@ -102,90 +85,176 @@ var data;
 
 var width = 1200,
 	height = 300,
-	radius = 15,
+	radius = 20,
 	margin = { top: 20, right: 20, bottom: 20, left: 120 };
 
-const svg = select("#chart") // id app
+var data;
+
+// template
+var template = select("#template").html();
+Mustache.parse(template);
+
+// containers
+const svg = select("#chart") // id chart
 	.append("svg")
 	.attr("preserveAspectRatio", "xMidYMid")
-	.attr("viewBox", [0, 0, width, height])
-	// .attr("viewBox", [-200, 0, width * 1.2, height])
-	.style("overflow", "visible");
+	.attr("viewBox", [0, 0, width, height]);
+// .attr("viewBox", "0 0 " + width + " " + height);
+// .attr("width", [margin.left, width - margin.right])
+// .attr("height", [0, height - margin.bottom])
+// .attr("viewBox", [-200, 0, width * 1.2, height])
+// .style("overflow", "visible");
 
-// const svgChart = svg.append("g").attr("class", "chart")
-
-const svgDetails = select("#details")
-	.append("svg")
-	.attr("viewBox", [width * 0.8, 0, width, height]);
-
-var dots = svg.append("g");
+var dots = svg.append("g").attr("class", "dots colors");
 
 var tooltip = select("#chart").append("div").attr("class", "tooltip hidden");
+
+// var dataById = map();
+
+// scales
+var xScale = scaleLinear().range([margin.left, width - margin.right]);
+
+// var colorScale = scaleOrdinal().range(colorsCat);
+var colorScale = scaleOrdinal().range(range(6).map((i) => "c" + i));
+// console.log(colorScale([1, 2, 3]));
+
+var formatAxis = format(".4r");
+
+// const svgDetails = select("#details")
+// 	.append("svg")
+// 	.attr("viewBox", [width * 0.8, 0, width, height]);
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// legend ///////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-const svgLegend = select("#legend")
+var legendX = scaleOrdinal();
+
+var legendXAxis = axisBottom()
+	.scale(legendX)
+	.tickSize(13)
+	.tickFormat(function (d) {
+		return formatAxis(d);
+	});
+
+var legendSvg = select("#legend")
 	.append("svg")
 	.attr("width", "100%")
-	.attr("height", "50");
-// svg.append("g")
-// .attr("class", "legend")
-// .attr("viewBox", [width * 0.2, 0, width * 0.8, height / 2]);
-// .attr("transform", "translate(50,30)");
+	.attr("height", "44");
 
-var groupLegend = svgLegend
+var g = legendSvg
 	.append("g")
-	.attr("class", "legend-key")
+	.attr("class", "legend-key colors")
 	.attr("transform", "translate(" + 20 + "," + 20 + ")");
 
-groupLegend.append("circle").data(colorsCat).enter().append("circle");
+// returns CSS class names for colors
+g.selectAll("circle")
+	.data(colorScale.range().map((d) => colorScale(extent(d).reverse())))
+	.enter()
+	.append("rect");
 
-groupLegend.append("text").attr("class", "legend-caption").attr("y", -6);
+// We add a <text> element acting as the caption of the legend. The text
+// will be set later.
+g.append("text").attr("class", "caption").attr("y", -6);
 
 function legendUpdate() {
-	var legendWidth = 0.8 * width;
-	// var legendxScale = domain().range([0, legendWdith])
-	var dataUnique = chain(data)
-		.map((d) => d[currentKey])
-		.uniq()
-		.value();
+	var legendWidth = select("#chart").node().getBoundingClientRect().width - 50;
 
-	// console.log(dataUnique);
+	var legendDomain = colorScale.range().map(function (d) {
+		// var r = d;
+		// var r = colorScale.invertExtent(d);
+		var r = colorScale(extent(d).reverse());
+		return r[1];
+	});
 
-	var legendxScale = scaleOrdinal()
-		.range([margin.left, width - margin.right])
-		.domain(dataUnique);
-	// console.log(legendxScale(dataUnique));
+	legendDomain.unshift(colorScale.domain()[0]);
+	// console.log(legendDomain);
 
-	groupLegend
-		.selectAll("circle")
-		.data(dataUnique)
-		.attr("cx", (d) => legendxScale(d))
-		.attr("cy", "10")
-		.attr("r", radius)
-		.attr("fill", (d) => colorScale(dataUnique));
+	if (legendWidth < 400) {
+		legendDomain = legendDomain.filter(function (d, i) {
+			return i % 3 === 0;
+		});
+	}
+
+	legendX
+		.domain(xScale.domain())
+		// .domain(colorScale.domain())
+		.range([0, legendWidth]);
+
+	g.selectAll("rect")
+		.data(colorScale.range().map((d) => colorScale(extent(d).reverse())))
+		.attr("height", 8)
+		.attr("x", function (d) {
+			return legendX(d[0]);
+		})
+		.attr("width", function (d) {
+			return legendX(d[1]) - legendX(d[0]);
+		})
+		.attr("class", function (d, i) {
+			return colorScale.range()[i];
+		});
+
+	// We update the legend caption. To do this, we take the text of the
+	// currently selected dropdown option.
+	var keyDropdown = select("#dropdown").node();
+	var selectedOption = keyDropdown.options[keyDropdown.selectedIndex];
+	g.selectAll("text.caption").text(selectedOption.text);
+
+	// We set the calculated domain as tickValues for the legend axis.
+	legendXAxis.tickValues(legendDomain);
+
+	// We call the axis to draw the axis.
+	g.call(legendXAxis);
 }
+
+// EUCD legend
+// const svgLegend = select("#legend")
+// 	.append("svg")
+// 	.attr("width", "100%")
+// 	.attr("height", "50");
+// // svg.append("g")
+// // .attr("class", "legend")
+// // .attr("viewBox", [width * 0.2, 0, width * 0.8, height / 2]);
+// // .attr("transform", "translate(50,30)");
+
+// var groupLegend = svgLegend
+// 	.append("g")
+// 	.attr("class", "legend-key")
+// 	.attr("transform", "translate(" + 20 + "," + 20 + ")");
+
+// groupLegend.append("circle").data(colorsCat).enter().append("circle");
+
+// groupLegend.append("text").attr("class", "legend-caption").attr("y", -6);
+
+// function legendUpdate() {
+// 	var legendWidth = 0.8 * width;
+// 	// var legendxScale = domain().range([0, legendWdith])
+// 	var dataUnique = chain(data)
+// 		.map((d) => d[currentKey])
+// 		.uniq()
+// 		.value();
+
+// 	// console.log(dataUnique);
+
+// 	var legendxScale = scaleOrdinal()
+// 		.range([margin.left, width - margin.right])
+// 		.domain(dataUnique);
+// 	// console.log(legendxScale(dataUnique));
+
+// 	groupLegend
+// 		.selectAll("circle")
+// 		.data(dataUnique)
+// 		.attr("cx", (d) => legendxScale(d))
+// 		.attr("cy", "10")
+// 		.attr("r", radius)
+// 		.attr("fill", (d) => colorScale(dataUnique));
+// }
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// data /////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-// var dataById = d3.map();
-
-// scales
-var xScale = scaleLinear().range([margin.left, width - margin.right]);
-
-var colorScale = scaleOrdinal().range(colorsCat);
-
-// var chartFeatures = svg.append("g");
-
-// var legendBox = d3.legendColor().scale(colorScale);
-
-const url = "data/EUISS Database.csv";
-
-csv(url, (d) => {
+csv("data/EUISS Database.csv", (d) => {
 	return {
 		id: d.CPI_CODE,
 		name: d.Name,
@@ -212,35 +281,24 @@ csv(url, (d) => {
 
 	// console.log(data);
 
-	// nesting and keying
-	// var nested = nest()
-	// 	.key((d) => d.id)
-	// 	.rollup((d) => d[0])
+	// dataById = nest()
+	// 	.key(function (d) {
+	// 		return d.id;
+	// 	})
+	// 	.rollup(function (d) {
+	// 		return d[0];
+	// 	})
 	// 	.map(data);
-	// console.log(nest);
-
-	//// unique values
-	const dataAttacker = chain(data)
-		.map((d) => d.attacker_jurisdiction)
-		.uniq()
-		.value();
-
-	//// unique types
-	const dataType = chain(data)
-		.map((d) => d.us_me)
-		.uniq()
-		.value();
+	// // console.log(dataById);
 
 	// scales
-	xScale = xScale.domain(
+	xScale.domain(
 		extent(data, (d) => {
 			return d.startYear;
 		})
 	);
 
 	// axes
-	var formatAxis = format(".4r");
-
 	const xAxis = axisBottom().scale(xScale).tickFormat(formatAxis);
 
 	svg
@@ -273,9 +331,11 @@ csv(url, (d) => {
 		.enter()
 		.append("circle")
 		.attr("class", "dots")
+		.attr("cx", (d) => d.x)
+		.attr("cy", (d) => d.y)
 		.attr("r", radius)
-		.attr("fill", "#eee")
-		.on("mousemove", showTooltip)
+		// .attr("fill", "#eee")
+		.on("mouseover", showTooltip)
 		.on("mouseout", hideTooltip)
 		.on("click", showDetails);
 
@@ -296,92 +356,52 @@ function dotsUpdate() {
 
 	colorScale.domain(dataUnique);
 
+	// xScale.domain(
+	// 	extent(data, (d) => {
+	// 		return d.startYear;
+	// 	})
+	// );
+
 	data = sortBy(data, currentKey);
+	// data = sortBy(data,  d => d.id);
 	// console.log(data);
 
 	dots
 		.selectAll(".dots")
-		.attr("cx", (d) => d.x)
-		.attr("cy", (d) => d.y)
 		.transition()
 		.duration(500)
 		// .ease("easeCubic")
-		.attr("fill", (d) => colorScale(d[currentKey]));
+		// .attr("fill", d => colorScale(d[currentKey]));
+		.attr("class", colorScale(data.map((d) => d[currentKey])));
+	// function (d) {
+	// return colorScale(getValueOfData(dataById.id));
+	// return colorScale(getValueOfData(dataById[getIdOfFeature(f)]));
+	// 	return ;
+	// });
+
+	// console.log(data.map(d => d[currentKey]));
 
 	legendUpdate();
 }
-
-// little helpers
-
-///////////////////////////////////////////////////////////////////////////
-//////////////////////////// tooltip //////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-// from https://github.com/lvonlanthen/data-map-d3/blob/step-12/map.js
-
-function showTooltip(d) {
-	// var mousepos = mouse(select("#chart").node()).map((d) => parseInt(d));
-
-	// var left = Math.min(width - 4 * d.name.length, mouse[0] + 5);
-	// var top = mouse[1] + 25;
-
-	// var left = Math.min(width - 4 * d.name.length, mouse[0] + 5);
-	// var top = mouse[1] + 25;
-
-	// Get the current mouse position (as integer)
-	var mousepos = mouse(select("#chart").node()).map((d) => parseInt(d));
-
-	// var svgobj = document.querySelector('svg');
-	var widthInner = window.innerWidth;
-
-	// Calculate the absolute left and top offsets of the tooltip. If the
-	// mouse is close to the right border of the map, show the tooltip on
-	// the left.
-	var left = mousepos[0];
-	// var left = Math.min(width - 4 * d.name.length, mousepos[0] - 25);
-	var top = mousepos[1] + Math.sqrt(widthInner) + 280;
-	// var top = mousepos[1] + 650;
-
-	tooltip
-		.classed("hidden", false)
-		.attr("style", "left:100px")
-		.attr("style", "left:" + left + "px; top:" + top + "px")
-		.html(d.name);
-	// .attr("style", "left:" + left + "px; top:" + top + "px")
-	// .attr("style", "left:" + (width - 500) + "px")
-	// .attr("style", "top:0px")
-	// tooltip text
-	// select(".tooltip h2").text(d.name);
-	// select(".tooltip .date").text("from " + d.startLabel + " to " + d.endLabel);
-	// select(".tooltip .type").text("type: " + d.us_me);
-	// select(".tooltip .attacker").text("attacker: " + d.attacker_jurisdiction);
-	// select(".tooltip .target").text("target: " + d.name);
-}
-
-function hideTooltip() {
-	tooltip.classed("hidden", true);
-}
-
-///////////////////////////////////////////////////////////////////////////
-//////////////////////////// helpers //////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// details //////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-function showDetails(d) {
-	// Get the ID of the feature.
-	// var id = getIdOfFeature(f);
-	// Use the ID to get the data entry.
-	// var d = dataById[id];
-	// Render the Mustache template with the data object and put the
-	// resulting HTML output in the details container.
-	// var detailsHtml = Mustache.render(template, d);
+function showDetails(f) {
+	var detailsHtml = Mustache.render(template, f);
 	// Hide the initial container.
-	// d3.select('#initial').classed("hidden", true);
+	select("#initial").classed("hidden", true);
 	// Put the HTML output in the details container and show (unhide) it.
-	// d3.select('#details').html(detailsHtml);
-	// d3.select('#details').classed("hidden", false);
+	select("#details").html(detailsHtml);
+	select("#details").classed("hidden", false);
+}
+
+function hideDetails() {
+	// Hide the details
+	select("#details").classed("hidden", true);
+	// Show the initial content
+	select("#initial").classed("hidden", false);
 }
 
 // update
@@ -419,3 +439,51 @@ function showDetails(d) {
 
 // var initialData = dataMap[data[0]];
 // update(data);
+
+///////////////////////////////////////////////////////////////////////////
+//////////////////////////// tooltip //////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+// from https://github.com/lvonlanthen/data-map-d3/blob/step-12/map.js
+
+function showTooltip(d) {
+	var mousepos = mouse(this).map((d) => parseInt(d, 10));
+	// var mousepos = mouse(select("#chart").node()).map((d) => parseInt(d));
+	// var widthInner = window.innerWidth;
+	// var heightInner = window.innerHeight;
+
+	var left = Math.min(width - 4 * d.name.length, mousepos[0] + 5);
+	// var left = mousepos[0];
+	var top = mousepos[1];
+	// var top = mousepos[1] - 200;
+	// console.log(left, top);
+
+	tooltip
+		.classed("hidden", false)
+		// .attr(
+		// 	"style",
+		// 	"left:" + (left - 100) + "px; top:" + (top + 500) + "px"
+		// )
+		// .style("top", mouse(this)[1] + "px")
+		// .style("left", mouse(this)[0] + "px")
+		.attr("style", "left:50px;top:700px")
+		.html(d.name);
+	// console.log(d.name)
+}
+
+function hideTooltip() {
+	tooltip.classed("hidden", true);
+}
+
+///////////////////////////////////////////////////////////////////////////
+//////////////////////////// helpers //////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+
+function getValueOfData(d) {
+	// return +d[currentKey];
+	return d[currentKey];
+}
+
+function getIdOfFeature(f) {
+	return f.id;
+	// return f.properties.GMDNR;
+}
