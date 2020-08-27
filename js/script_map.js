@@ -41,14 +41,15 @@ import {
 	symbol,
 	symbolTriangle,
 	scale,
-	mouse
+	mouse,
+	schemeCategory10
 } from "d3";
 
 // import fetch as d3-fetch from "d3-fetch";
 import { csv } from "d3-fetch";
 
 // import _ from "lodash";
-import { split, forEach, chain, sortBy } from "lodash";
+import { split, forEach, chain, sortBy, constant, times, concat } from "lodash";
 
 // import mustache
 // import { Mustache } from "mustache";
@@ -117,7 +118,7 @@ const svg = select("#chart") // id chart
 // .attr("viewBox", [-200, 0, width * 1.2, height])
 // .style("overflow", "visible");
 
-var dots = svg.append("g").attr("class", "dots colors");
+var dots = svg.append("g").attr("class", "dots");
 
 var tooltip = select("#chart").append("div").attr("class", "tooltip hidden");
 
@@ -126,6 +127,7 @@ var tooltip = select("#chart").append("div").attr("class", "tooltip hidden");
 // scales
 var xScale = scaleLinear().range([margin.left, width - margin.right]);
 
+// var colorScale = scaleOrdinal(colorsCat);
 var colorScale = scaleOrdinal().range(colorsCat);
 // var colorScale = scale.colorsCat;
 // console.log(colorScale([1, 2, 3]));
@@ -143,17 +145,39 @@ var formatAxis = format(".4r");
 var legendSvg = select("#legend")
 	.append("svg")
 	.attr("width", "100%")
-	.attr("height", "150px");
+	.attr("height", "44");
 
-var legend = legendSvg
-	.append("g")
-	// .attr("class", "legend")
-	// .attr("class", "legend-key colors")
-	.attr("transform", "translate(20,20)");
-// .attr("transform", "translate(" + 20 + "," + 20 + ")");
-// .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+var legend = legendSvg.append("g").attr("class", "legend");
 
-// console.log(scale.category10())
+legend
+	.selectAll("circle")
+	.data(colorScale.range())
+	.enter()
+	.append("circle")
+	.attr("cx", 50)
+	.attr("cy", 10)
+	.attr("r", radius / 2)
+	// .attr("width", 18)
+	// .attr("height", 18)
+	.style("fill", colorScale)
+	.attr("transform", function (d, i) {
+		return "translate(" + (i * width) / 8 + ",20)";
+	});
+
+legend
+	.selectAll("text")
+	.data(colorScale.domain())
+	.enter()
+	.append("text")
+	.attr("x", 70)
+	.attr("y", 9)
+	.attr("dy", ".35em")
+	.style("text-anchor", "start")
+	.attr("transform", function (d, i) {
+		return "translate(" + (i * width) / 8 + ",20)";
+	});
+
+// var legend = legendSvg.append("g").attr("class", "legend");
 
 function legendUpdate() {
 	var dataUnique = chain(data)
@@ -161,25 +185,33 @@ function legendUpdate() {
 		.uniq()
 		.value();
 
-	legend.data(colorScale.domain(dataUnique)).style("fill", colorScale);
+	// fill unused domain slots with empty string
+	if (dataUnique.length < 6) {
+		var l = dataUnique.length;
+		var m = 6 - l;
+		var p = times(m, constant(" "));
+		dataUnique = concat(dataUnique, p);
+		// console.log(concat(dataUnique, p));
+	}
+
+	console.log(dataUnique);
+
+	colorScale.domain(dataUnique);
+	// console.log(colorScale.domain());
 
 	legend
-		.append("rect")
-		.attr("x", width - 18)
-		.attr("width", 18)
-		.attr("height", 18);
+		.selectAll("circle")
+		.data(colorScale.range())
+		.style("fill", colorScale.range());
 
 	legend
-		.append("text")
-		.attr("x", width - 24)
-		.attr("y", 9)
-		.attr("dy", ".35em")
-		.style("text-anchor", "end")
+		.selectAll("text")
+		.data(colorScale.domain())
+		// .enter()
 		.text(function (d) {
 			return d;
 		});
-
-	// svg.select(".legendOrdinal").call(legendOrdinal);
+	legend.exit().remove();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -212,16 +244,6 @@ csv("data/EUISS Database.csv", (d) => {
 	});
 
 	// console.log(data);
-
-	// dataById = nest()
-	// 	.key(function (d) {
-	// 		return d.id;
-	// 	})
-	// 	.rollup(function (d) {
-	// 		return d[0];
-	// 	})
-	// 	.map(data);
-	// // console.log(dataById);
 
 	// scales
 	xScale.domain(
@@ -303,8 +325,8 @@ function dotsUpdate() {
 		.transition()
 		.duration(500)
 		// .ease("easeCubic")
-		// .attr("fill", d => colorScale(d[currentKey]));
-		.attr("class", colorScale(data.map((d) => d[currentKey])));
+		.attr("fill", (d) => colorScale(d[currentKey]));
+	// .attr("class", colorScale(data.map((d) => d[currentKey])));
 	// function (d) {
 	// return colorScale(getValueOfData(dataById.id));
 	// return colorScale(getValueOfData(dataById[getIdOfFeature(f)]));

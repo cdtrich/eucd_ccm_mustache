@@ -177,15 +177,15 @@ csv(url, d => {
 	// .style("stroke", function(d, i) { return z(i); });
 
 	// labels
-	const labels = svg
-		.selectAll("label")
-		.data(data)
-		.enter()
-		.append("text")
-		.classed("label", true)
-		.text(d => d.name)
-		.attr("x", d => xScale(d.start) + 6)
-		.attr("y", d => yScale(d.attacker_jurisdiction) + 15);
+	// const labels = svg
+	// 	.selectAll("label")
+	// 	.data(data)
+	// 	.enter()
+	// 	.append("text")
+	// 	.classed("label", true)
+	// 	.text(d => d.name)
+	// 	.attr("x", d => xScale(d.start) + 6)
+	// 	.attr("y", d => yScale(d.attacker_jurisdiction) + 15);
 
 	// dots
 	const dots = svg
@@ -213,6 +213,12 @@ csv(url, d => {
 			// victim
 			select(".tooltip .target").text("target: " + d.name);
 		});
+
+	// move tooltip to cursor location
+	d3.select(".tooltip")
+		.style("left", d3.mouse.x + "px")
+		// .style("left", d3.mouse.x + "px")
+		.style("top", d3.mouse.y + "px");
 
 	///////////////////////////////////////////////////////////////////////////
 	//////////////////////////// axes /////////////////////////////////////////

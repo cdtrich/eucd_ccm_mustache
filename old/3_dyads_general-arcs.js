@@ -20,16 +20,13 @@ import {
 	timeFormat,
 	scaleOrdinal,
 	line as _line,
-	forceSimulation,
-	forceLink,
-	forceManyBody,
-	forceX,
-	forceY
+	curveBasis,
+	axisBottom
 } from "d3";
 
 // import _ from "lodash";
 // Load the core build.
-import { chain, replace, split, uniqBy, filter } from "lodash";
+import { chain, replace, split } from "lodash";
 
 // import fetch as d3-fetch from "d3-fetch";
 import { csv } from "d3-fetch";
@@ -60,7 +57,7 @@ const colorsType = [
 
 const url =
 	// "https://docs.google.com/spreadsheets/d/e/2PACX-1vS_852u619EmtHZE3p4sq7ZXwfrtxhOc1IlldXIu7z43OFVTtVZ1A577RbfgZEnzVhM_X0rnkGzxytz/pub?gid=0&single=true&output=csv";
-	"data/EUISS Database.csv";
+	"data/EUISS Database 2020-08-04 ET.csv";
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// data /////////////////////////////////////////
@@ -111,33 +108,17 @@ csv(url, (d) => {
 
 	// x - dyad countries
 	//// unique countries
-	var nodes = data;
-	const links = data;
-	// console.log(nodes);
-
-	var nodesFromUnique = chain(nodes)
-		.uniqBy((d) => d.dyad_from)
-		.value();
-	// console.log(nodesFromUnique);
-
-	var nodesToUnique = chain(nodes)
-		.uniqBy((d) => d.dyad_to)
-		.value();
-	// console.log(nodesToUnique);
-
-	var nodesUnique = chain(nodes)
+	const dataDyad = chain(data)
 		.map((d) => [d.dyad_from, d.dyad_to])
 		.flatten()
 		.uniq()
 		.value();
-	// console.log(nodesUnique);
+	console.log(dataDyad);
 
-	// const obj = nodesUnique.reduce((array, value, index) => ({ ...array, [index]: value }), {});
-
-	nodes = nodesUnique.map((d) => {
-		return { id: d };
-	});
-	// console.log(nodes);
+	const xScale = scaleOrdinal()
+		.domain(dataDyad)
+		.range([margin.left, width - margin.right]);
+	// console.log(xScale.domain(), xScale.range());
 
 	// color - Existence_of_Cyber_Command
 	//// unique types
@@ -155,77 +136,104 @@ csv(url, (d) => {
 	//////////////////////////// plot /////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////
 
-	// const links = data.links.map(d => data.create(d));
-	// const nodes = data.nodes.map(d => nodes.create(d));
+	// var link = svg
+	// 	.append("g")
+	// 	.attr("class", "links")
+	// 	.selectAll("path")
+	// 	.data(data)
+	// 	.enter()
+	// 	.append("path")
+	// 	.attr("d", function (d) {
+	// 		return [
+	// 			"M",
+	// 			d.dyad_from,
+	// 			height,
+	// 			"A",
+	// 			(d.dyad_from - d.dyad_to) / 2,
+	// 			",",
+	// 			(d.dyad_from - d.dyad_to) / 2,
+	// 			0,
+	// 			0,
+	// 			",",
+	// 			d.dyad_from < d.dyad_to ? 1 : 0,
+	// 			d.dyad_to,
+	// 			",",
+	// 			height
+	// 		].join(" ");
+	// 	});
+	// .attr('stroke-width', function (d) { return linkWidth(d.chapters.length); })
+	// .on('mouseover', function (d) {
+	//   link.style('stroke', null);
+	//   select(this).style('stroke', '#d62333');
+	// })
+	// .on('mouseout', function (d) {
+	//   link.style('stroke', null);
+	// var node = svg
+	// 	.append("g")
+	// 	.attr("class", "nodes")
+	// 	.selectAll("circle")
+	// 	.data(data)
+	// 	.enter()
+	// 	.append("circle")
+	// 	.attr("cx", function (d) {
+	// 		return d.dyad_from;
+	// 	})
+	// 	.attr("cy", 0);
+	// .attr('r', function (d) { return nodeRadius(d.chapters.length); })
+	// .on('mouseover', function (d) {
+	//   node.style('fill', null);
+	//   d3.select(this).style('fill', 'black');
+	//   var nodesToHighlight = graph.links.map(function (e) { return e.source === d ? e.target : e.target === d ? e.source : 0})
+	//     .filter(function (d) { return d; });
+	//   node.filter(function (d) { return nodesToHighlight.indexOf(d) >= 0; })
+	//     .style('fill', '#555');
+	//   link.style('stroke', function (link_d) {
+	//     return link_d.source === d | link_d.target === d ? '#d62333' : null;
+	//   });
+	// })
+	// .on('mouseout', function (d) {
+	//   node.style('fill', null);
+	//   link.style('stroke', null);
+	// });
 
-	var simulation = forceSimulation(nodes)
-		.force(
-			"links",
-			forceLink(links).id((d) => d.dyad_from)
-		)
-		.force("charge", forceManyBody())
-		.force("x", forceX())
-		.force("y", forceY());
+	// lines
+	// var line = _line()
+	// 	.curve(curveBasis)
+	// 	.x((d) => xScale(d.dyad_from))
+	// 	.y(0);
 
-	const link = svg
-		.append("g")
-		// .attr("stroke", "#999")
-		// .attr("stroke-opacity", 0.6)
-		.selectAll("line")
-		.data(links)
-		.join("line")
-		.attr("stroke", (d) => d.command);
-	// .attr("stroke-width", (d) => Math.sqrt(d.value));
+	// var linerange = svg
+	// 	.selectAll("path.linerange")
+	// 	.data(data)
+	// 	.enter()
+	// 	.append("g")
+	// 	.attr("class", "linerange");
 
-	const node = svg
-		.append("g")
-		.attr("stroke", "#fff")
-		.attr("stroke-width", 1.5)
-		.selectAll("circle")
-		.data(nodes)
-		.join("circle")
-		.attr("r", 5)
-		.attr("fill", "black");
-	// .call(drag(simulation));
+	// linerange
+	// 	.append("path")
+	// 	.attr("d", function (d) {
+	// 		return line(d.dyad_from);
+	// 	})
+	// 	.attr("id", (d) => d.attacker_jurisdiction);
 
-	node.append("title").text((d) => d.id);
+	// labels
+	// const labels = svg
+	// 	.selectAll("label")
+	// 	.data(data)
+	// 	.enter()
+	// 	.append("text")
+	// 	.classed("label", true)
+	// 	.text((d) => d.name)
+	// 	.attr("x", (d) => xScale(d.dyad_from) + 6)
+	// 	.attr("y", 0);
 
-	simulation.on("tick", () => {
-		link
-			.attr("x1", (d) => d.source.x)
-			.attr("y1", (d) => d.source.y)
-			.attr("x2", (d) => d.target.x)
-			.attr("y2", (d) => d.target.y);
-
-		node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
-	});
-
-	// invalidation.then(() => simulation.stop());
-
-	// var drag = function (simulation) {
-	// 	function dragstarted(d) {
-	// 		if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-	// 		d.fx = d.x;
-	// 		d.fy = d.y;
-	// 	}
-
-	// 	function dragged(d) {
-	// 		d.fx = d3.event.x;
-	// 		d.fy = d3.event.y;
-	// 	}
-
-	// 	function dragended(d) {
-	// 		if (!d3.event.active) simulation.alphaTarget(0);
-	// 		d.fx = null;
-	// 		d.fy = null;
-	// 	}
-
-	// 	return d3
-	// 		.drag()
-	// 		.on("start", dragstarted)
-	// 		.on("drag", dragged)
-	// 		.on("end", dragended);
-	// };
+	var dots = svg
+		.selectAll("dots")
+		.data(data)
+		.enter()
+		.append("circle")
+		.attr("r", 6)
+		.attr("cx", (d) => xScale(d.dyad_from));
 
 	// dots
 	// const dots = svg
@@ -274,4 +282,17 @@ csv(url, (d) => {
 	///////////////////////////////////////////////////////////////////////////
 	//////////////////////////// axes /////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////
+
+	// axes
+	const xAxis = axisBottom().scale(xScale);
+	// .tickFormat(d => "$" + parseInt((d + meanBox) / 1000000) + "M"); // parseInt takes off decimals
+
+	// svg
+	// 	.append("g")
+	// 	.classed("x-axis", true)
+	// 	// .attr("transform", `translate(0, ${yScale()})`) // no transformation in x, but in y
+	// 	.attr("transform", "translate(0," + height + ")")
+	// 	// .style("outline-style", "dotted")
+	// 	// .attr("")
+	// 	.call(xAxis);
 });

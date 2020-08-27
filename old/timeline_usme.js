@@ -2,13 +2,11 @@
 //////////////////////////// to do ////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-// yaxis domain()
-// xaxis annual ticks
+// exception for dates with day == "unkown"
 // linerange (d3.line x.begin x.end?!)...
-// labels()
-// hover
 // dropdown selection
 // load data at end as global var after plot function
+// legend
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// dependencies /////////////////////////////////
@@ -31,7 +29,7 @@ import {
 
 // import _ from "lodash";
 // Load the core build.
-import { filter, chain } from "lodash";
+import { filter, chain, replace } from "lodash";
 
 // import fetch as d3-fetch from "d3-fetch";
 import { csv } from "d3-fetch";
@@ -43,7 +41,7 @@ import { csv } from "d3-fetch";
 const width = 1200;
 const height = 300;
 const margin = { top: 20, right: 20, bottom: 20, left: 120 };
-const svg = select("#app") // id app
+const svg = select("#timeline_usme") // id app
 	.append("svg")
 	.attr("width", width)
 	.attr("height", height)
@@ -73,9 +71,22 @@ csv(url, (d) => {
 	return {
 		id: d.CPI_CODE,
 		name: d.Name,
-		// name_alt: d.name_alternative,
-		start: new Date(+d.Start_year, +d.Start_month, +d.Start_day),
+		start: new Date(+d.Start_year, +d.Start_month - 1, +d.Start_day),
+		startYear: +d.Start_year,
+		startFix: new Date(
+			+d.Start_year,
+			+d.Start_month - 1,
+			replace(d.Start_day, "unknown", 1)
+		),
+		startLabel: d.Start_day + "-" + d.Start_month + "-" + d.Start_year,
 		end: new Date(+d.End_year, +d.End_month, +d.end_day),
+		endYear: +d.End_year,
+		endFix: new Date(
+			+d.End_year,
+			+d.End_month - 1,
+			replace(d.End_day, "unknown", 1)
+		),
+		endLabel: d.end_day + "-" + d.End_month + "-" + d.End_year,
 		report: new Date(+d.Report_year, +d.Report_month, +d.Report_day),
 		attacker_jurisdiction: d.Attacker_jurisdiction,
 		target_jurisdiction: d.Target_jurisdiction,
@@ -83,7 +94,7 @@ csv(url, (d) => {
 		us_me: d.US_military_effets
 	};
 }).then(function (data) {
-	console.log(data);
+	// console.log(data);
 	// data = _.head(data);
 
 	///////////////////////////////////////////////////////////////////////////
@@ -95,9 +106,36 @@ csv(url, (d) => {
 	// );
 
 	// dropping missing dates (defaults to 1899 otherwise)
-	data = filter(data, (d) => {
-		return d.end > new Date("2000-01-01");
-	});
+	// data = filter(data, (d) => {
+	// 	return d.end > new Date("2000-01-01");
+	// });
+
+	// fixing missing days
+	// dataFix = mapValues(data, function(d, i) {
+	// d.start
+	// });
+	// dataFix = chain(data)
+	// .replace((d) => d.start, "unknown", "01");
+	// var replaceUnknown = function (arr, key, newval) {
+	// 	var match = find(arr, key);
+	// 	if (match) {
+	// 		var index = indexOf(arr, find(arr, key));
+	// 		arr.splice(index, 1, newval);
+	// 	} else {
+	// 		arr.push(newval);
+	// 	}
+	// };
+
+	// data.startFix = replaceUnknown(data.Start_day, "unknown", "01");
+	// console.log(data);
+
+	// 	var data = chain(data)
+	// 	.map(data, function(element) {
+	// 		return _.extend({}, element, {start_fix: 0});
+	// })
+	// 	.map(function(a) {
+	// 		return a.Start_day === "unknown" ? 1;
+	// 	});
 
 	// new time formats for tooltip
 	var formatDate = timeFormat("%d %b %Y");

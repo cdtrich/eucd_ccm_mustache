@@ -69,7 +69,7 @@
 			inform debates and discussions of how to best prevent and mitigate the
 			various threads of politico-military use of ICTs.
 		</p>
-		<div id="timeline_usme" class="app"></div>
+		<!-- <div id="timeline_usme" class="app"></div> -->
 		<p class="story">
 			Since 2007, in more than twenty occasions, states or state-sponsored
 			actors have inflicted damage on another state using ICTs.
@@ -87,8 +87,8 @@
 				</select>
 			</div>
 
-			<div id="chart"><!-- Map container --></div>
 			<div id="legend"><!-- Legend container --></div>
+			<div id="chart"><!-- Map container --></div>
 
 			<div id="details" class="hidden row"><!-- Details container --></div>
 			<div id="initial">
@@ -124,6 +124,20 @@
 					</tr>
 					<tr>
 						<td class="definition" colspan="2">Jurisdiction primarily affected by the operation</td>
+					</tr>
+					<tr>
+						<th>Attack cyber command</th>
+						<td>{{ command }}</td>
+					</tr>
+					<tr>
+						<td class="definition" colspan="2">Existence of the cyber command or equivalent in the jurisdiction primariy associated with the operation  at the time of the operation.</td>
+					</tr>
+					<tr>
+						<th>Ongoing military confrontation</th>
+						<td>{{ military }}</td>
+					</tr>
+					<tr>
+						<td class="definition" colspan="2">Indicates the level and likelihood of use of destructive military power in the dyadic relationships. Military confrontation is active where frequent hostilities and destructive power are used between the rivals. Latent refers to where escalation and the use of destructive (military) power is likely. Frozen conflict means that the use of destructive power is settled by temporary, formal arrangement or de facto understanding.</td>
 					</tr>
 						<th>US military effects</th>
 						<td>{{ us_me }}</td>
@@ -228,6 +242,6 @@
 		<!-- <script src="./lib/d3-legend.min.js"></script> -->
 		<!-- Custom JS code -->
 		<script src="./js/script_map.js"></script>
-		<script src="./js/2_timeline_usme.js"></script>
+		<!-- <script src="./js/2_timeline_usme.js"></script> -->
 	</body>
 </html>
