@@ -10,9 +10,6 @@
 // transitions: https://github.com/veltman/flubber
 // steps
 // ripoff: https://www.bloomberg.com/graphics/2015-auto-sales/
-// embed: symbolTriangle
-
-// done
 // dropdown: ("add buttons") https://blocks.roadtolarissa.com/1wheel/46874895034f5bded13c97097bf25a83
 // "simple" dropdown: https://bl.ocks.org/ProQuestionAsker/8382f70af7f4a7355827c6dc4ee8817d
 
@@ -38,9 +35,6 @@ import {
 	nest,
 	range,
 	map,
-	symbol,
-	symbolTriangle,
-	scale,
 	mouse
 } from "d3";
 
@@ -55,14 +49,8 @@ import { split, forEach, chain, sortBy } from "lodash";
 const Mustache = require("mustache");
 // const map = require("d3");
 
-// import d3-legend
-// import legendColor from "d3-legend.min.js";
-// import {
-// 	legendColor
-// } from "./d3-legend.min.js";
-// const legendColor = require("../lib/d3-legend.min.js");
-// const legendColor = require("lib/d3-legend");
-// const legendColor = require("../js/d3-legend.min.js");
+// import d3-legend as d3-legend from "d3-legend";
+// import { legendColor } from "d3-legend";
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// globals //////////////////////////////////////
@@ -126,8 +114,8 @@ var tooltip = select("#chart").append("div").attr("class", "tooltip hidden");
 // scales
 var xScale = scaleLinear().range([margin.left, width - margin.right]);
 
-var colorScale = scaleOrdinal().range(colorsCat);
-// var colorScale = scale.colorsCat;
+// var colorScale = scaleOrdinal().range(colorsCat);
+var colorScale = scaleOrdinal().range(range(6).map((i) => "c" + i));
 // console.log(colorScale([1, 2, 3]));
 
 var formatAxis = format(".4r");
@@ -140,46 +128,77 @@ var formatAxis = format(".4r");
 //////////////////////////// legend ///////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
+var legendX = scaleOrdinal();
+
+var legendXAxis = axisBottom()
+	.scale(legendX)
+	.tickSize(13)
+	.tickFormat(function (d) {
+		return formatAxis(d);
+	});
+
 var legendSvg = select("#legend")
 	.append("svg")
 	.attr("width", "100%")
-	.attr("height", "150px");
+	.attr("height", "44");
 
-var legend = legendSvg
+var g = legendSvg
 	.append("g")
-	// .attr("class", "legend")
-	// .attr("class", "legend-key colors")
-	.attr("transform", "translate(20,20)");
-// .attr("transform", "translate(" + 20 + "," + 20 + ")");
-// .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+	.attr("class", "legend-key colors")
+	.attr("transform", "translate(" + 20 + "," + 20 + ")");
 
-// console.log(scale.category10())
+// returns CSS class names for colors
+g.selectAll("rect")
+	.data(colorScale.range().map((d) => colorScale(extent(d).reverse())))
+	.enter()
+	.append("rect");
+
+// We add a <text> element acting as the caption of the legend. The text
+// will be set later.
+g.append("text").attr("class", "caption").attr("y", -6);
+
+//////////////////////////////////////
+
+// EUCD legend
+// const svgLegend = select("#legend")
+// 	.append("svg")
+// 	.attr("width", "100%")
+// 	.attr("height", "50");
+// // svg.append("g")
+// // .attr("class", "legend")
+// // .attr("viewBox", [width * 0.2, 0, width * 0.8, height / 2]);
+// // .attr("transform", "translate(50,30)");
+
+// var groupLegend = svgLegend
+// 	.append("g")
+// 	.attr("class", "legend-key")
+// 	.attr("transform", "translate(" + 20 + "," + 20 + ")");
+
+// groupLegend.append("circle").data(colorsCat).enter().append("circle");
+
+// groupLegend.append("text").attr("class", "legend-caption").attr("y", -6);
 
 function legendUpdate() {
+	var legendWidth = select("#chart").node().getBoundingClientRect().width - 50;
+
 	var dataUnique = chain(data)
 		.map((d) => d[currentKey])
 		.uniq()
 		.value();
+	console.log(dataUnique);
 
-	legend.data(colorScale.domain(dataUnique)).style("fill", colorScale);
+	var legendxScale = scaleOrdinal()
+		.range([margin.left, width - margin.right])
+		.domain(dataUnique);
+	// console.log(legendxScale(dataUnique));
 
-	legend
-		.append("rect")
-		.attr("x", width - 18)
-		.attr("width", 18)
-		.attr("height", 18);
-
-	legend
-		.append("text")
-		.attr("x", width - 24)
-		.attr("y", 9)
-		.attr("dy", ".35em")
-		.style("text-anchor", "end")
-		.text(function (d) {
-			return d;
-		});
-
-	// svg.select(".legendOrdinal").call(legendOrdinal);
+	groupLegend
+		.selectAll("circle")
+		.data(dataUnique)
+		.attr("cx", (d) => legendxScale(d))
+		.attr("cy", "10")
+		.attr("r", radius)
+		.attr("fill", (d) => colorScale(dataUnique));
 }
 
 ///////////////////////////////////////////////////////////////////////////

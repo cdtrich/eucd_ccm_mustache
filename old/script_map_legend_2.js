@@ -10,9 +10,6 @@
 // transitions: https://github.com/veltman/flubber
 // steps
 // ripoff: https://www.bloomberg.com/graphics/2015-auto-sales/
-// embed: symbolTriangle
-
-// done
 // dropdown: ("add buttons") https://blocks.roadtolarissa.com/1wheel/46874895034f5bded13c97097bf25a83
 // "simple" dropdown: https://bl.ocks.org/ProQuestionAsker/8382f70af7f4a7355827c6dc4ee8817d
 
@@ -38,9 +35,6 @@ import {
 	nest,
 	range,
 	map,
-	symbol,
-	symbolTriangle,
-	scale,
 	mouse
 } from "d3";
 
@@ -55,14 +49,8 @@ import { split, forEach, chain, sortBy } from "lodash";
 const Mustache = require("mustache");
 // const map = require("d3");
 
-// import d3-legend
-// import legendColor from "d3-legend.min.js";
-// import {
-// 	legendColor
-// } from "./d3-legend.min.js";
-// const legendColor = require("../lib/d3-legend.min.js");
-// const legendColor = require("lib/d3-legend");
-// const legendColor = require("../js/d3-legend.min.js");
+// import d3-legend as d3-legend from "d3-legend";
+// const legend = require("d3-legend");
 
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////// globals //////////////////////////////////////
@@ -126,8 +114,9 @@ var tooltip = select("#chart").append("div").attr("class", "tooltip hidden");
 // scales
 var xScale = scaleLinear().range([margin.left, width - margin.right]);
 
-var colorScale = scaleOrdinal().range(colorsCat);
-// var colorScale = scale.colorsCat;
+// var colorScale = scaleOrdinal().range(colorsCat);
+// var colorScale = scaleOrdinal().range(colorsCat);
+var colorScale = scaleOrdinal().range(range(6).map((i) => "c" + i));
 // console.log(colorScale([1, 2, 3]));
 
 var formatAxis = format(".4r");
@@ -145,41 +134,53 @@ var legendSvg = select("#legend")
 	.attr("width", "100%")
 	.attr("height", "150px");
 
-var legend = legendSvg
+var groupLegend = legendSvg
 	.append("g")
-	// .attr("class", "legend")
-	// .attr("class", "legend-key colors")
-	.attr("transform", "translate(20,20)");
-// .attr("transform", "translate(" + 20 + "," + 20 + ")");
-// .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+	.attr("class", "legend-key colors")
+	.attr("transform", "translate(" + 20 + "," + 20 + ")");
 
-// console.log(scale.category10())
+// returns CSS class names for colors
+groupLegend
+	.selectAll("rect")
+	// .data(colorScale.range().map((d) => colorScale(extent(d).reverse())))
+	.enter()
+	.append("rect");
+
+groupLegend.append("text").attr("class", "caption").attr("y", -6);
 
 function legendUpdate() {
+	var legendWidth = select("#chart").node().getBoundingClientRect().width - 50;
+
 	var dataUnique = chain(data)
 		.map((d) => d[currentKey])
 		.uniq()
 		.value();
+	// console.log(dataUnique);
 
-	legend.data(colorScale.domain(dataUnique)).style("fill", colorScale);
+	/////////////////////////
+	//HERE
+	////////////////////////
+	colorScale.domain(dataUnique);
 
-	legend
-		.append("rect")
-		.attr("x", width - 18)
-		.attr("width", 18)
-		.attr("height", 18);
+	var legendxScale = scaleOrdinal().range([0, legendWidth]).domain(dataUnique);
+	// colorScale = colorScale.domain(colorScale);
 
-	legend
-		.append("text")
-		.attr("x", width - 24)
-		.attr("y", 9)
-		.attr("dy", ".35em")
-		.style("text-anchor", "end")
-		.text(function (d) {
-			return d;
-		});
+	// legendxScale.domain(dataUnique).range([0, legendWidth]);
 
-	// svg.select(".legendOrdinal").call(legendOrdinal);
+	groupLegend
+		.selectAll("rect")
+		// .data(dataUnique)
+		.data(colorScale.range().map((d) => colorScale(extent(d).reverse())))
+		.attr("height", radius)
+		.attr("x", (d) => legendxScale(d[0]))
+		.attr("width", radius)
+		// .attr("width", (d) => legendxScale(d[1]) - legendxScale(d[0]))
+		.attr("class", (d, i) => colorScale.range()[i]);
+	// .attr("r", radius)
+	// .attr("fill", (d) => colorScale(dataUnique));
+
+	console.log((d) => "x " + legendxScale(d[0]));
+	console.log((d) => "width " + legendxScale(d[1]) - legendxScale(d[0]));
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -40,7 +40,6 @@ import {
 	map,
 	symbol,
 	symbolTriangle,
-	scale,
 	mouse
 } from "d3";
 
@@ -60,8 +59,7 @@ const Mustache = require("mustache");
 // import {
 // 	legendColor
 // } from "./d3-legend.min.js";
-// const legendColor = require("../lib/d3-legend.min.js");
-// const legendColor = require("lib/d3-legend");
+const legendColor = require("../d3-legend.min.js");
 // const legendColor = require("../js/d3-legend.min.js");
 
 ///////////////////////////////////////////////////////////////////////////
@@ -127,7 +125,6 @@ var tooltip = select("#chart").append("div").attr("class", "tooltip hidden");
 var xScale = scaleLinear().range([margin.left, width - margin.right]);
 
 var colorScale = scaleOrdinal().range(colorsCat);
-// var colorScale = scale.colorsCat;
 // console.log(colorScale([1, 2, 3]));
 
 var formatAxis = format(".4r");
@@ -145,15 +142,23 @@ var legendSvg = select("#legend")
 	.attr("width", "100%")
 	.attr("height", "150px");
 
-var legend = legendSvg
+var groupLegend = legendSvg
 	.append("g")
-	// .attr("class", "legend")
+	.attr("class", "legend")
 	// .attr("class", "legend-key colors")
 	.attr("transform", "translate(20,20)");
 // .attr("transform", "translate(" + 20 + "," + 20 + ")");
-// .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
 
-// console.log(scale.category10())
+var legendOrdinal = legendColor()
+	// .shape("circle", symbol().type(symbolCircle).size(150)())
+	.shape("path", symbol().type(symbolTriangle).size(150)())
+	.shapePadding(10)
+	.orient("horizontal")
+	//use cellFilter to hide the "e" cell
+	.cellFilter(function (d) {
+		return d.label !== "";
+	})
+	.scale(colorScale);
 
 function legendUpdate() {
 	var dataUnique = chain(data)
@@ -161,25 +166,7 @@ function legendUpdate() {
 		.uniq()
 		.value();
 
-	legend.data(colorScale.domain(dataUnique)).style("fill", colorScale);
-
-	legend
-		.append("rect")
-		.attr("x", width - 18)
-		.attr("width", 18)
-		.attr("height", 18);
-
-	legend
-		.append("text")
-		.attr("x", width - 24)
-		.attr("y", 9)
-		.attr("dy", ".35em")
-		.style("text-anchor", "end")
-		.text(function (d) {
-			return d;
-		});
-
-	// svg.select(".legendOrdinal").call(legendOrdinal);
+	svg.select(".legendOrdinal").call(legendOrdinal);
 }
 
 ///////////////////////////////////////////////////////////////////////////
