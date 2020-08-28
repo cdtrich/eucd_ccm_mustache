@@ -2,17 +2,16 @@
 //////////////////////////// to do ////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-// fix tooltip position
+// legend update: https://stackoverflow.com/questions/19772124/how-can-i-update-my-graph-legend-in-d3-js
 // details = full details and variable descriptions
-// add legend: https://data-map-d3.readthedocs.io/en/latest/steps/step_14.html#legend
 // voronoi hover
 // bouncy force
 // transitions: https://github.com/veltman/flubber
 // steps
 // ripoff: https://www.bloomberg.com/graphics/2015-auto-sales/
-// embed: symbolTriangle
 
 // done
+// fix tooltip position
 // dropdown: ("add buttons") https://blocks.roadtolarissa.com/1wheel/46874895034f5bded13c97097bf25a83
 // "simple" dropdown: https://bl.ocks.org/ProQuestionAsker/8382f70af7f4a7355827c6dc4ee8817d
 
@@ -142,42 +141,14 @@ var formatAxis = format(".4r");
 //////////////////////////// legend ///////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
+// var legendSvg = select("#legen
+
 var legendSvg = select("#legend")
 	.append("svg")
 	.attr("width", "100%")
 	.attr("height", "44");
 
 var legend = legendSvg.append("g").attr("class", "legend");
-
-legend
-	.selectAll("circle")
-	.data(colorScale.range())
-	.enter()
-	.append("circle")
-	.attr("cx", 50)
-	.attr("cy", 10)
-	.attr("r", radius / 2)
-	// .attr("width", 18)
-	// .attr("height", 18)
-	.style("fill", colorScale)
-	.attr("transform", function (d, i) {
-		return "translate(" + (i * width) / 8 + ",20)";
-	});
-
-legend
-	.selectAll("text")
-	.data(colorScale.domain())
-	.enter()
-	.append("text")
-	.attr("x", 70)
-	.attr("y", 9)
-	.attr("dy", ".35em")
-	.style("text-anchor", "start")
-	.attr("transform", function (d, i) {
-		return "translate(" + (i * width) / 8 + ",20)";
-	});
-
-// var legend = legendSvg.append("g").attr("class", "legend");
 
 function legendUpdate() {
 	var dataUnique = chain(data)
@@ -186,32 +157,60 @@ function legendUpdate() {
 		.value();
 
 	// fill unused domain slots with empty string
-	if (dataUnique.length < 6) {
-		var l = dataUnique.length;
-		var m = 6 - l;
-		var p = times(m, constant(" "));
-		dataUnique = concat(dataUnique, p);
-		// console.log(concat(dataUnique, p));
-	}
+	// if (dataUnique.length < 6) {
+	// 	var l = dataUnique.length;
+	// 	var m = 6 - l;
+	// 	var p = times(m, constant(" "));
+	// 	dataUnique = concat(dataUnique, p);
+	// 	// console.log(concat(dataUnique, p));
+	// }
 
 	console.log(dataUnique);
 
 	colorScale.domain(dataUnique);
 	// console.log(colorScale.domain());
 
-	legend
-		.selectAll("circle")
-		.data(colorScale.range())
-		.style("fill", colorScale.range());
+	console.log(colorScale.range());
+	// console.log(colorScale.range[1])
+	console.log(colorScale.domain());
+	// console.log(colorScale())
+	// console.log(colorScale.domain[1])
 
-	legend
-		.selectAll("text")
-		.data(colorScale.domain())
-		// .enter()
+	var legenddot = legend.selectAll("circle").data(dataUnique);
+
+	legenddot.enter().append("circle");
+
+	legenddot.exit().remove();
+
+	legenddot
+		.attr("cx", 50)
+		.attr("cy", 10)
+		.attr("r", radius / 4)
+		// .attr("width", 18)
+		// .attr("height", 18)
+		.style("fill", (d, i) => colorScale(i))
+		// .style("fill", (d, i) => colorsCat[i])
+		.attr("transform", function (d, i) {
+			return "translate(" + (i * width) / 8 + ",20)";
+		});
+
+	var legendlab = legend.selectAll("text").data(dataUnique);
+
+	legendlab.enter().append("text");
+
+	legendlab.exit().remove();
+
+	legendlab
+		.attr("x", 65)
+		.attr("y", 15)
+		// .attr("dy", ".35em")
+		.style("text-anchor", "start")
+		.attr("transform", function (d, i) {
+			return "translate(" + (i * width) / 8 + ",20)";
+		})
 		.text(function (d) {
 			return d;
 		});
-	legend.exit().remove();
 }
 
 ///////////////////////////////////////////////////////////////////////////
